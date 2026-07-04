@@ -24,6 +24,13 @@
     {"domain": "whatsapp.com",     "name": "WhatsApp",       "kind": "social", "color": "#25d366", "tagline": "Proste, bezpieczne wiadomości."},
     {"domain": "telegram.org",     "name": "Telegram",       "kind": "social", "color": "#229ed9", "tagline": "Szybkie i bezpieczne wiadomości."},
     {"domain": "airbnb.com",       "name": "Airbnb",         "kind": "shop",   "color": "#ff385c", "tagline": "Znajdź nocleg w dowolnym miejscu."},
-    {"domain": "booking.com",      "name": "Booking.com",    "kind": "shop",   "color": "#003580", "tagline": "Rezerwuj noclegi taniej."}
+    {"domain": "booking.com",      "name": "Booking.com",    "kind": "shop",   "color": "#003580", "tagline": "Rezerwuj noclegi taniej."},
+    {"domain": "pekao.pl",         "name": "Bank Pekao",     "kind": "social", "color": "#e30613", "tagline": "Bankowość internetowa Pekao24."},
+    {"domain": "ing.pl",           "name": "ING",            "kind": "social", "color": "#ff6200", "tagline": "Zaloguj się do Moje ING."},
+    {"domain": "santander.pl",     "name": "Santander",      "kind": "social", "color": "#ec0000", "tagline": "Bankowość internetowa Santander."},
+    {"domain": "pkobp.pl",         "name": "PKO BP",         "kind": "social", "color": "#004a99", "tagline": "Zaloguj się do iPKO."},
+    {"domain": "ceneo.pl",         "name": "Ceneo",          "kind": "shop",   "color": "#008fd7", "tagline": "Porównywarka cen."},
+    {"domain": "empik.com",        "name": "Empik",          "kind": "shop",   "color": "#00a3a5", "tagline": "Książki, muzyka, gry i więcej."},
+    {"domain": "x-kom.pl",         "name": "x-kom",          "kind": "shop",   "color": "#c4161c", "tagline": "Elektronika i sprzęt komputerowy."}
   ]
 }

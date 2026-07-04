@@ -148,6 +148,20 @@ services:
           - www.airbnb.com
           - booking.com
           - www.booking.com
+          - pekao.pl
+          - www.pekao.pl
+          - ing.pl
+          - www.ing.pl
+          - santander.pl
+          - www.santander.pl
+          - pkobp.pl
+          - www.pkobp.pl
+          - ceneo.pl
+          - www.ceneo.pl
+          - empik.com
+          - www.empik.com
+          - x-kom.pl
+          - www.x-kom.pl
     depends_on: [bank, gov, webmock]
 
 networks:

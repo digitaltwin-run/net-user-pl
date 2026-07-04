@@ -18,7 +18,7 @@ Part of the trio: **net-user-pl** (the network) · [pc-user-pl](https://github.c
 | `bank` | virtual mbank.pl with SMS one-time-code login | `bank://` |
 | `gov` | virtual login.gov.pl (Profil Zaufany stub, human-in-the-loop) | `gov://` |
 | `sms-gateway` | the virtual carrier: delivers OTPs to a handset inbox | `sms://` |
-| `webmock` | 24 branded mocks of popular sites (facebook.com, youtube.com, allegro.pl…), host-routed from one server | `web://` |
+| `webmock` | 31 branded mocks of popular sites (facebook.com, youtube.com, allegro.pl…), host-routed from one server | `web://` |
 
 Virtual domains (resolve to the proxy via docker embedded DNS):
 `mbank.pl`, `login.gov.pl`, `phone.jan.pl` (served by mobile-user-pl), `poczta.jan.pl`,

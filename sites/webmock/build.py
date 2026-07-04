@@ -42,22 +42,42 @@ def write_caddy() -> None:
     (ROOT / "proxy/mocks.caddy").write_text("\n\n".join(blocks) + "\n")
 
 
-def write_aliases() -> None:
+ALIAS_BEGIN = "          # --- webmock brands (generated) ---"
+ALIAS_END = "    depends_on: [bank, gov, webmock]"
+
+
+def write_aliases() -> str:
     lines = []
     for d in DOMAINS:
         lines += [f"          - {d}", f"          - www.{d}"]
-    (ROOT / "sites/webmock/aliases.txt").write_text("\n".join(lines) + "\n")
-    return "\n".join(lines)
+    body = "\n".join(lines)
+    (ROOT / "sites/webmock/aliases.txt").write_text(body + "\n")
+    return body
+
+
+def inject_compose_aliases(body: str) -> bool:
+    """Rewrite the generated alias block in compose.net.yml between the sentinels,
+    so adding a brand is a single `build.py` run — no hand-editing compose."""
+    comp = ROOT / "compose.net.yml"
+    s = comp.read_text()
+    if ALIAS_BEGIN not in s or ALIAS_END not in s:
+        return False
+    head = s[: s.index(ALIAS_BEGIN) + len(ALIAS_BEGIN)]
+    tail = s[s.index(ALIAS_END):]
+    comp.write_text(head + "\n" + body + "\n" + tail)
+    return True
 
 
 def main() -> int:
     write_ca_domains()
     write_caddy()
-    aliases = write_aliases()
+    body = write_aliases()
+    injected = inject_compose_aliases(body)
     print(f"brands: {len(DOMAINS)}")
-    print("wrote: ca/mock-domains.txt, proxy/mocks.caddy, sites/webmock/aliases.txt")
-    print("\nDNS aliases for the `proxy` service in compose.net.yml (already applied):")
-    print(aliases)
+    print("wrote: ca/mock-domains.txt, proxy/mocks.caddy, sites/webmock/aliases.txt"
+          + (" + compose.net.yml aliases" if injected else ""))
+    if not injected:
+        print("\n(!) nie znaleziono znaczników w compose.net.yml — wklej ręcznie z aliases.txt")
     return 0
 
 

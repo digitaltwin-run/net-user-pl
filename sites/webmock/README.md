@@ -13,7 +13,7 @@ w sieci `netpl`; nic nie wychodzi do prawdziwego internetu. To świadomie mocnie
 wariant niż `*.localhost` z Traefikiem (patrz `TODO/`): daje realny HTTPS i realne
 nazwy domen, których potrzebują testy przeglądarkowe.
 
-## Zawarte atrapy (24)
+## Zawarte atrapy (31)
 
 | Adres | Marka | Typ UI |
 | --- | --- | --- |
@@ -41,6 +41,13 @@ nazwy domen, których potrzebują testy przeglądarkowe.
 | `https://telegram.org` | Telegram | social |
 | `https://airbnb.com` | Airbnb | shop |
 | `https://booking.com` | Booking.com | shop |
+| `https://pekao.pl` | Bank Pekao | social |
+| `https://ing.pl` | ING | social |
+| `https://santander.pl` | Santander | social |
+| `https://pkobp.pl` | PKO BP | social |
+| `https://ceneo.pl` | Ceneo | shop |
+| `https://empik.com` | Empik | shop |
+| `https://x-kom.pl` | x-kom | shop |
 
 Typy UI (`kind`): `social` (login+feed), `video`, `search`, `mail`, `shop`,
 `wiki`, `dev`, `portal`.

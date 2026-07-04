@@ -120,3 +120,38 @@ booking.com, www.booking.com {
 	tls /certs/booking.com.pem /certs/booking.com.key
 	reverse_proxy webmock:9860
 }
+
+pekao.pl, www.pekao.pl {
+	tls /certs/pekao.pl.pem /certs/pekao.pl.key
+	reverse_proxy webmock:9860
+}
+
+ing.pl, www.ing.pl {
+	tls /certs/ing.pl.pem /certs/ing.pl.key
+	reverse_proxy webmock:9860
+}
+
+santander.pl, www.santander.pl {
+	tls /certs/santander.pl.pem /certs/santander.pl.key
+	reverse_proxy webmock:9860
+}
+
+pkobp.pl, www.pkobp.pl {
+	tls /certs/pkobp.pl.pem /certs/pkobp.pl.key
+	reverse_proxy webmock:9860
+}
+
+ceneo.pl, www.ceneo.pl {
+	tls /certs/ceneo.pl.pem /certs/ceneo.pl.key
+	reverse_proxy webmock:9860
+}
+
+empik.com, www.empik.com {
+	tls /certs/empik.com.pem /certs/empik.com.key
+	reverse_proxy webmock:9860
+}
+
+x-kom.pl, www.x-kom.pl {
+	tls /certs/x-kom.pl.pem /certs/x-kom.pl.key
+	reverse_proxy webmock:9860
+}
