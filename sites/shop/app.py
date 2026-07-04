@@ -41,6 +41,7 @@ PLANS = {
                 "desc": "Dodatkowy pakiet, wazny 12 miesiecy."},
 }
 ORDERS: dict[str, dict] = {}
+LICENSES: dict[str, dict] = {}   # license -> order (with remaining quota)
 _OID = [70000]
 
 PAGE = """<!doctype html><html lang=pl><head><meta charset=utf-8><title>{title}</title>
@@ -133,6 +134,28 @@ class H(BaseHTTPRequestHandler):
                            scheme="shop", actor=DOMAIN, category="UNAVAILABLE")
                 return self._page(502, "Blad", "<h1>Bramka platnosci niedostepna</h1>")
             return self._redirect(f"{P24}/pay?order={oid}")
+        if path == "/use":
+            # CyberMysz consumes one action against a paid license
+            n = int(self.headers.get("Content-Length", "0"))
+            data = json.loads(self.rfile.read(n) or b"{}")
+            lic = data.get("license", "")
+            o = LICENSES.get(lic)
+            if not o:
+                emit_error(DOMAIN, "license_invalid", f"unknown license {lic}", scheme="shop", actor=DOMAIN)
+                self.send_response(403); self.end_headers(); self.wfile.write(b'{"ok":false}'); return
+            if o.get("quota", 0) <= 0:
+                code = emit_error(DOMAIN, "quota_exhausted", f"no actions left on {lic}",
+                                  scheme="shop", actor=DOMAIN, category="RESOURCE_EXHAUSTED")
+                self.send_response(402); self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": code}).encode()); return
+            o["quota"] -= 1
+            action = data.get("action", "action")
+            emit(f"shop://{DOMAIN}/cybermysz/command/use", actor=lic, action=action, remaining=o["quota"])
+            emit_log(DOMAIN, "usage", f"{lic} used '{action}', remaining {o['quota']}", actor=DOMAIN)
+            body = json.dumps({"ok": True, "remaining": o["quota"], "used": action}).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+            return
         if path == "/p24-callback":
             n = int(self.headers.get("Content-Length", "0"))
             data = json.loads(self.rfile.read(n) or b"{}")
@@ -143,6 +166,8 @@ class H(BaseHTTPRequestHandler):
             if data.get("status") == "success":
                 o["status"] = "paid"
                 o["license"] = f"CM-{oid[-5:]}-{PLANS[o['plan']]['actions']}"
+                o["quota"] = PLANS[o["plan"]]["actions"]
+                LICENSES[o["license"]] = o
                 emit(f"shop://{DOMAIN}/order/command/paid", actor=DOMAIN, orderId=oid, license=o["license"])
                 emit_log(DOMAIN, "checkout", f"order {oid} PAID; license {o['license']}", actor=DOMAIN, level="info")
             else:
