@@ -1,0 +1,25 @@
+{
+	# Fully offline: no ACME, no external calls. Certs come from the local CA.
+	auto_https off
+	admin off
+}
+
+mbank.pl, www.mbank.pl {
+	tls /certs/mbank.pl.pem /certs/mbank.pl.key
+	reverse_proxy bank:9820
+}
+
+phone.jan.pl, www.phone.jan.pl {
+	tls /certs/phone.jan.pl.pem /certs/phone.jan.pl.key
+	reverse_proxy phone:9830
+}
+
+login.gov.pl, www.login.gov.pl {
+	tls /certs/login.gov.pl.pem /certs/login.gov.pl.key
+	reverse_proxy gov:9840
+}
+
+# plain-HTTP intranet landing so the desktop has a friendly start page
+:80 {
+	respond "net-user-pl virtual internet is up. Try https://mbank.pl / https://phone.jan.pl"
+}

@@ -1,0 +1,76 @@
+# net-user-pl — the virtual internet: DNS (docker aliases), a local CA, a TLS
+# reverse proxy, and citizen-facing sites (bank, gov), plus the SMS carrier and
+# the URI event bus. Everything is offline and isolated on the `netpl` network.
+#
+# Bring the CA up to date first:  bash ca/gen.sh
+services:
+  eventbus:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./eventbus:/app:ro
+      - eventbus_data:/data
+    command: python app.py
+    networks: [netpl]
+    ports:
+      - "${EVENTBUS_PORT:-28800}:9800"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:9800/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  sms-gateway:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./sms-gateway:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
+    command: python app.py
+    networks: [netpl]
+    depends_on: [eventbus]
+
+  bank:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./sites/bank:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
+    command: python app.py
+    networks: [netpl]
+    depends_on: [eventbus, sms-gateway]
+
+  gov:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./sites/gov:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
+    command: python app.py
+    networks: [netpl]
+    depends_on: [eventbus]
+
+  proxy:
+    image: caddy:latest
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./ca/out:/certs:ro
+    networks:
+      netpl:
+        # docker embedded DNS = the virtual internet's DNS: these names resolve
+        # to the proxy, which terminates TLS with the local CA's leaf certs.
+        aliases:
+          - mbank.pl
+          - www.mbank.pl
+          - phone.jan.pl
+          - login.gov.pl
+          - poczta.jan.pl
+    depends_on: [bank, gov]
+
+networks:
+  netpl:
+    external: true
+    name: netpl
+
+volumes:
+  eventbus_data:

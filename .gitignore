@@ -1,0 +1,4 @@
+# Generated CA material — never commit private keys. Regenerate with ca/gen.sh
+ca/out/
+__pycache__/
+*.pyc
