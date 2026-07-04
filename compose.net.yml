@@ -50,6 +50,26 @@ services:
     networks: [netpl]
     depends_on: [eventbus]
 
+  shop:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./sites/shop:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
+    command: python app.py
+    networks: [netpl]
+    depends_on: [eventbus]
+
+  p24:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./sites/p24:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
+    command: python app.py
+    networks: [netpl]
+    depends_on: [eventbus, sms-gateway]
+
   proxy:
     image: caddy:latest
     volumes:
