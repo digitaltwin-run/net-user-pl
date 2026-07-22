@@ -22,11 +22,11 @@ import os
 import sys
 import time
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, "/opt/twin")
-from twinlib import emit, emit_error, emit_log  # noqa: E402
+from twinlib import TwinRequestHandler, emit, emit_error, emit_log  # noqa: E402
 
 DOMAIN = os.environ.get("SHOP_DOMAIN", "sklep.ifuri.com")
 P24 = os.environ.get("P24_URL", "https://przelewy24.pl")
@@ -52,21 +52,11 @@ label{{display:block;margin:14px 0 6px}} input,select{{font-size:24px;padding:9p
 <body>{body}</body></html>"""
 
 
-class H(BaseHTTPRequestHandler):
-    def log_message(self, *a):
-        return
-
+class ShopHandler(TwinRequestHandler):
     def _page(self, code, title, body):
         p = PAGE.format(title=title, body=body).encode()
         self.send_response(code); self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(p))); self.end_headers(); self.wfile.write(p)
-
-    def _redirect(self, to):
-        self.send_response(303); self.send_header("Location", to); self.end_headers()
-
-    def _form(self):
-        n = int(self.headers.get("Content-Length", "0"))
-        return {k: v[0] for k, v in parse_qs(self.rfile.read(n).decode()).items()}
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -108,7 +98,7 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
         if path == "/checkout":
-            f = self._form()
+            f = self.read_form()
             plan = f.get("plan", "BASIC")
             if plan not in PLANS:
                 emit_error(DOMAIN, "invalid_plan", f"unknown plan {plan}", scheme="shop", actor=DOMAIN)
@@ -133,7 +123,7 @@ class H(BaseHTTPRequestHandler):
                 emit_error(DOMAIN, "p24_unreachable", f"cannot register payment: {e}",
                            scheme="shop", actor=DOMAIN, category="UNAVAILABLE")
                 return self._page(502, "Blad", "<h1>Bramka platnosci niedostepna</h1>")
-            return self._redirect(f"{P24}/pay?order={oid}")
+            return self.redirect(f"{P24}/pay?order={oid}")
         if path == "/use":
             # CyberMysz consumes one action against a paid license
             n = int(self.headers.get("Content-Length", "0"))
@@ -180,4 +170,4 @@ class H(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "9850"))
     print(f"shop {DOMAIN} on :{port}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), ShopHandler).serve_forever()

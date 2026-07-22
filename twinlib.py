@@ -16,6 +16,8 @@ import os
 import re
 import time
 import urllib.request
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import parse_qs
 
 EVENTBUS = os.environ.get("EVENTBUS_URL", "http://eventbus:9800")
 DOCS_BASE = "https://docs.ifuri.com/errors.html"
@@ -36,6 +38,40 @@ _CATEGORY_STATUS = {
     "UNAVAILABLE": 503, "DEADLINE_EXCEEDED": 504, "INVALID_ARGUMENT": 400,
     "ALREADY_EXISTS": 409, "UNIMPLEMENTED": 501, "UNKNOWN": 500,
 }
+
+
+class TwinRequestHandler(BaseHTTPRequestHandler):
+    """Common HTTP mechanics for the small services in the virtual internet."""
+
+    def log_message(self, *_args) -> None:
+        return
+
+    def send_bytes(self, code: int, body: bytes, content_type: str) -> None:
+        self.send_response(code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_json(self, code: int, payload) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode()
+        self.send_bytes(code, body, "application/json; charset=utf-8")
+
+    def read_json(self) -> dict:
+        length = int(self.headers.get("Content-Length", "0"))
+        return json.loads(self.rfile.read(length) or b"{}")
+
+    def read_form(self) -> dict[str, str]:
+        length = int(self.headers.get("Content-Length", "0"))
+        values = parse_qs(self.rfile.read(length).decode())
+        return {key: items[0] for key, items in values.items()}
+
+    def redirect(self, location: str, *, cookie: str | None = None) -> None:
+        self.send_response(303)
+        self.send_header("Location", location)
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
+        self.end_headers()
 
 
 def _post(uri: str, actor: str, payload: dict) -> None:

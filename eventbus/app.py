@@ -15,10 +15,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+
+sys.path.insert(0, "/opt/twin")
+from twinlib import TwinRequestHandler  # noqa: E402
 
 DATA = os.environ.get("EVENTBUS_DATA", "/data/events.jsonl")
 LOCK = threading.Lock()
@@ -53,47 +57,36 @@ def _read(since: int, scheme: str | None) -> list[dict]:
     return out
 
 
-class Handler(BaseHTTPRequestHandler):
-    def _json(self, code: int, obj) -> None:
-        body = json.dumps(obj, ensure_ascii=False).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):  # quiet
-        return
-
+class EventBusHandler(TwinRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/health":
-            return self._json(200, {"ok": True, "count": _SEQ[0]})
+            return self.send_json(200, {"ok": True, "count": _SEQ[0]})
         if parsed.path == "/events":
             q = parse_qs(parsed.query)
             since = int(q.get("since", ["0"])[0])
             scheme = q.get("scheme", [None])[0]
-            return self._json(200, {"ok": True, "events": _read(since, scheme)})
-        return self._json(404, {"ok": False, "error": "not found"})
+            return self.send_json(200, {"ok": True, "events": _read(since, scheme)})
+        return self.send_json(404, {"ok": False, "error": "not found"})
 
     def do_POST(self):
         if urlparse(self.path).path != "/emit":
-            return self._json(404, {"ok": False, "error": "not found"})
+            return self.send_json(404, {"ok": False, "error": "not found"})
         length = int(self.headers.get("Content-Length", "0"))
         try:
             data = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
-            return self._json(400, {"ok": False, "error": "bad json"})
+            return self.send_json(400, {"ok": False, "error": "bad json"})
         uri = data.get("uri")
         if not uri:
-            return self._json(400, {"ok": False, "error": "uri required"})
+            return self.send_json(400, {"ok": False, "error": "uri required"})
         rec = _append({
             "uri": uri,
             "ts": time.time(),
             "actor": data.get("actor", "system"),
             "payload": data.get("payload", {}),
         })
-        return self._json(200, {"ok": True, "seq": rec["seq"]})
+        return self.send_json(200, {"ok": True, "seq": rec["seq"]})
 
 
 if __name__ == "__main__":
@@ -103,4 +96,4 @@ if __name__ == "__main__":
             _SEQ[0] = sum(1 for _ in fh)
     port = int(os.environ.get("PORT", "9800"))
     print(f"eventbus on :{port} -> {DATA}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), EventBusHandler).serve_forever()

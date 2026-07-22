@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import os
 import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, "/opt/twin")
-from twinlib import emit  # noqa: E402
+from twinlib import TwinRequestHandler, emit  # noqa: E402
 
 PAGE = """<!doctype html><html lang=pl><head><meta charset=utf-8><title>Profil Zaufany</title>
 <style>body{{font-family:Arial;font-size:26px;margin:40px}}h1{{color:#003}}input{{font-size:26px;padding:10px;width:340px}}
@@ -20,10 +20,7 @@ button{{font-size:26px;padding:12px 28px;margin-top:20px;background:#003;color:#
 <body><h1>PROFIL ZAUFANY</h1>{body}</body></html>"""
 
 
-class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *a):
-        return
-
+class GovernmentLoginHandler(TwinRequestHandler):
     def _html(self, code, body):
         page = PAGE.format(body=body).encode()
         self.send_response(code)
@@ -49,4 +46,4 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "9840"))
     print(f"gov on :{port}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), GovernmentLoginHandler).serve_forever()

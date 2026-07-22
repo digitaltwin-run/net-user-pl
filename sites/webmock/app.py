@@ -15,12 +15,12 @@ from __future__ import annotations
 import json
 import os
 import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, "/opt/twin")
-from twinlib import emit, emit_error  # noqa: E402
+from twinlib import TwinRequestHandler, emit, emit_error  # noqa: E402
 
 BRANDS_FILE = Path(os.environ.get("BRANDS_FILE", "/app/brands.json"))
 
@@ -99,11 +99,8 @@ def _body_for(brand: dict) -> str:
                    "<div class=post>Gospodarka · Technologie · Sport</div></div>")
 
 
-class Handler(BaseHTTPRequestHandler):
+class WebMockHandler(TwinRequestHandler):
     server_version = "webmock/1.0"
-
-    def log_message(self, *a):
-        return
 
     def _brand(self) -> "dict | None":
         host = (self.headers.get("Host") or "").split(":")[0].lower()
@@ -155,4 +152,4 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "9860"))
     print(f"webmock on :{port} — {len(BRANDS)} atrap: {', '.join(sorted(BRANDS))}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), WebMockHandler).serve_forever()

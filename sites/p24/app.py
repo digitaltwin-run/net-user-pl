@@ -21,11 +21,11 @@ import os
 import sys
 import time
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, "/opt/twin")
-from twinlib import emit, emit_error, emit_log  # noqa: E402
+from twinlib import TwinRequestHandler, emit, emit_error, emit_log  # noqa: E402
 
 DOMAIN = os.environ.get("P24_DOMAIN", "przelewy24.pl")
 SMS_URL = os.environ.get("SMS_URL", "http://sms-gateway:9810")
@@ -42,25 +42,11 @@ button{{font-size:24px;padding:12px 26px;background:#c8102e;color:#fff;border:0;
 .amt{{font-size:30px;font-weight:bold}}</style></head><body>{body}</body></html>"""
 
 
-class H(BaseHTTPRequestHandler):
-    def log_message(self, *a):
-        return
-
+class PaymentGatewayHandler(TwinRequestHandler):
     def _page(self, code, body):
         p = PAGE.format(body=body).encode()
         self.send_response(code); self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(p))); self.end_headers(); self.wfile.write(p)
-
-    def _redirect(self, to):
-        self.send_response(303); self.send_header("Location", to); self.end_headers()
-
-    def _form(self):
-        n = int(self.headers.get("Content-Length", "0"))
-        return {k: v[0] for k, v in parse_qs(self.rfile.read(n).decode()).items()}
-
-    def _json_body(self):
-        n = int(self.headers.get("Content-Length", "0"))
-        return json.loads(self.rfile.read(n) or b"{}")
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -86,7 +72,7 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
         if path == "/register":
-            d = self._json_body()
+            d = self.read_json()
             oid = d.get("orderId")
             PAYMENTS[oid] = {"amount": d["amount"], "email": d.get("email", ""),
                              "title": d.get("title", ""), "returnUrl": d.get("returnUrl", ""),
@@ -95,7 +81,7 @@ class H(BaseHTTPRequestHandler):
             self.send_response(200); self.end_headers(); self.wfile.write(b'{"ok":true}')
             return
         if path == "/pay-card":
-            f = self._form()
+            f = self.read_form()
             oid = f.get("order")
             p = PAYMENTS.get(oid or "")
             if not p:
@@ -124,7 +110,7 @@ class H(BaseHTTPRequestHandler):
                 f"<label>Kod 3D-Secure</label><input name=code autofocus>"
                 f"<button>Potwierdz platnosc</button></form></div>"))
         if path == "/pay-3ds":
-            f = self._form()
+            f = self.read_form()
             oid = f.get("order")
             p = PAYMENTS.get(oid or "")
             if not p:
@@ -144,11 +130,11 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 emit_error(DOMAIN, "callback_failed", f"merchant callback failed: {e}",
                            scheme="p24", actor=DOMAIN, category="UNAVAILABLE")
-            return self._redirect(p["returnUrl"])
+            return self.redirect(p["returnUrl"])
         self.send_response(404); self.end_headers()
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "9860"))
     print(f"p24 {DOMAIN} on :{port}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), PaymentGatewayHandler).serve_forever()

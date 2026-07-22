@@ -9,6 +9,7 @@ services:
     working_dir: /app
     volumes:
       - ./eventbus:/app:ro
+      - ./twinlib.py:/opt/twin/twinlib.py:ro
       - eventbus_data:/data
     command: python app.py
     networks: [netpl]

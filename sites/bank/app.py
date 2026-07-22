@@ -18,12 +18,12 @@ import os
 import sys
 import time
 import urllib.request
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from http.cookies import SimpleCookie
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, "/opt/twin")
-from twinlib import emit  # noqa: E402
+from twinlib import TwinRequestHandler, emit  # noqa: E402
 
 SMS_URL = os.environ.get("SMS_URL", "http://sms-gateway:9810")
 DOMAIN = os.environ.get("BANK_DOMAIN", "mbank.pl")
@@ -45,7 +45,7 @@ def _sid_from(handler) -> str | None:
     return cookie["sid"].value if "sid" in cookie else None
 
 
-class Handler(BaseHTTPRequestHandler):
+class BankHandler(TwinRequestHandler):
     def _html(self, code, title, body, set_sid=None):
         page = PAGE.format(title=title, bank=DOMAIN.upper(), body=body).encode()
         self.send_response(code)
@@ -55,20 +55,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(page)))
         self.end_headers()
         self.wfile.write(page)
-
-    def _redirect(self, to, set_sid=None):
-        self.send_response(303)
-        self.send_header("Location", to)
-        if set_sid:
-            self.send_header("Set-Cookie", f"sid={set_sid}; Path=/")
-        self.end_headers()
-
-    def log_message(self, *a):
-        return
-
-    def _form(self):
-        length = int(self.headers.get("Content-Length", "0"))
-        return {k: v[0] for k, v in parse_qs(self.rfile.read(length).decode()).items()}
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -91,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             sid = _sid_from(self)
             sess = SESSIONS.get(sid or "")
             if not sess or not sess.get("authed"):
-                return self._redirect("/")
+                return self.redirect("/")
             emit(f"bank://{DOMAIN}/dashboard/query/view", actor=CUSTOMER["login"])
             return self._html(200, "Pulpit", (
                 f"<h1 style='color:#0a4'>PULPIT BANKOWY</h1>"
@@ -103,7 +89,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        form = self._form()
+        form = self.read_form()
         if path == "/login":
             if form.get("login") == CUSTOMER["login"] and form.get("password") == CUSTOMER["password"]:
                 _SID[0] += 1
@@ -119,7 +105,7 @@ class Handler(BaseHTTPRequestHandler):
                         headers={"Content-Type": "application/json"}), timeout=4).read()
                 except Exception as exc:
                     print("sms send failed:", exc, flush=True)
-                return self._redirect("/otp", set_sid=sid)
+                return self.redirect("/otp", cookie=f"sid={sid}; Path=/")
             emit(f"bank://{DOMAIN}/login/command/reject", actor=DOMAIN, login=form.get("login"))
             return self._html(401, "Logowanie", "<p style='color:#c00'>Bledny login lub haslo.</p>"
                               "<p><a href=/>Sprobuj ponownie</a></p>")
@@ -129,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
             if sess and form.get("code", "").strip() == sess.get("otp"):
                 sess["authed"] = True
                 emit(f"bank://{DOMAIN}/session/command/login-success", actor=CUSTOMER["login"], sid=sid)
-                return self._redirect("/dashboard", set_sid=sid)
+                return self.redirect("/dashboard", cookie=f"sid={sid}; Path=/")
             emit(f"bank://{DOMAIN}/otp/command/reject", actor=DOMAIN, sid=sid)
             return self._html(401, "Kod SMS", "<p style='color:#c00'>Bledny kod SMS.</p>"
                               "<p><a href=/otp>Sprobuj ponownie</a></p>")
@@ -139,4 +125,4 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "9820"))
     print(f"bank {DOMAIN} on :{port}", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", port), BankHandler).serve_forever()
